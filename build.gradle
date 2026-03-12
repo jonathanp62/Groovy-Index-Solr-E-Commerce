@@ -1,0 +1,90 @@
+/*
+ * (#)build.gradle  1.0.0   03/12/2026
+ *
+ * @author   Jonathan Parker
+ * @version  1.0.0
+ * @since    1.0.0
+ *
+ * MIT License
+ *
+ * Copyright (c) 2026 Jonathan M. Parker
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+plugins {
+    id 'groovy'
+    id 'com.gradleup.shadow'                    version '9.3.1'
+    id 'net.jmp.gradle.plugin.projectinfo-info' version '0.2.0'
+}
+
+apply plugin: 'net.jmp.gradle.plugin.projectinfo-info'
+
+ext {
+    project.group = 'net.jmp.solr.index.ecommerce'
+    project.version = '1.0.0'
+    project.description = 'to index the ecommerce products'
+}
+
+group = 'net.jmp.solr.index.ecommerce'
+version = '1.0.0'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation      'org.apache.groovy:groovy-all:4.0.30'
+
+    testImplementation  platform('org.junit:junit-bom:5.10.0')
+    testImplementation  'org.junit.jupiter:junit-jupiter'
+
+    testRuntimeOnly     'org.junit.platform:junit-platform-launcher'
+}
+
+jar {
+    manifest {
+        attributes('Implementation-Version': project.version)
+    }
+}
+
+/* ./gradlew shadowJar --no-configuration-cache */
+
+shadowJar {
+    manifest {
+        attributes(
+                'Main-Class': 'net.jmp.solr.index.ecommerce.Main',
+                'Implementation-Version': project.version
+        )
+    }
+
+    archiveFileName = "index-e-commerce-${project.version}.jar"
+
+    doLast {
+        copy {
+            from archiveFile
+            into "/usr/local/solr/lib"
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
