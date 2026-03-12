@@ -34,6 +34,8 @@ package net.jmp.solr.index.ecommerce
  * The main class for the Solr index e-commerce application
  */
 class Main {
+    private static String configurationResourceName = "configuration.properties"
+
     /**
      * The main method
      *
@@ -43,20 +45,64 @@ class Main {
         /* Getting the version from the build.gradle file only works for jar deployments */
 
         def version = Main.class.package?.implementationVersion
-        int exitValue = run(version, args as List<String>)
+        def configuration = getConfiguration()
+
+        if (!configuration) {
+            System.err.println("Failed to load configuration: Could not find ${configurationResourceName} on the classpath")
+            System.exit(1)
+        }
+
+        int exitValue = run(configuration, version, args as List<String>)
 
         System.exit(exitValue)
     }
 
     /**
+     * Gets the configuration
+     *
+     * @return  Configuration   The configuration or null if the configuration could not be loaded
+     */
+    private static getConfiguration() {
+        def props = new Properties()
+        def resourceStream = Main.class.getResourceAsStream('/' + configurationResourceName)
+
+        if (!resourceStream) {
+            resourceStream = Thread.currentThread().contextClassLoader?.getResourceAsStream(configurationResourceName)
+        }
+
+        if (resourceStream) {
+            try {
+                props.load(resourceStream)
+            } finally {
+                resourceStream.close()
+            }
+
+            def configuration = new Configuration()
+
+            configuration.productsUrl = props.getProperty('app.productsUrl')
+            configuration.solrUrl = props.getProperty('app.solrUrl')
+            configuration.solrCore = props.getProperty('app.solrCore')
+
+            if (!configuration.productsUrl || !configuration.solrUrl || !configuration.solrCore) {
+                return null
+            }
+
+            return configuration
+        } else {
+            return null
+        }
+    }
+
+    /**
      * The run method
      *
-     * @param   version String          The version of the application
-     * @param   args    List<String>    The command line arguments
-     * @return          int             The exit code
+     * @param   configuration   Configuration   The configuration
+     * @param   version         String          The version of the application
+     * @param   args            List<String>    The command line arguments
+     * @return                  int             The exit code
      */
-    private static int run(String version, List<String> args) {
-        Runner runner = new Runner(version, args)
+    private static int run(Configuration configuration, String version, List<String> args) {
+        Runner runner = new Runner(configuration, version, args)
 
         return runner.run()
     }

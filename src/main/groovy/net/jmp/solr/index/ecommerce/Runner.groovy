@@ -33,22 +33,24 @@ package net.jmp.solr.index.ecommerce
 import java.net.http.*
 
 class Runner {
+    /** The configuration */
+    private Configuration configuration
+
     /** The version of the application */
     private String version
 
     /** The list of command line arguments */
     private List<String> args
 
-    /** The URL for the products */
-    private String productsUrl = "https://fakestoreapi.com/products"
-
     /**
      * The constructor
      *
-     * @param version String          The version of the application
-     * @param args List<String>    The list of command line arguments
+     * @param configuration Configuration   The configuration
+     * @param version       String          The version of the application
+     * @param args          List<String>    The list of command line arguments
      */
-    Runner(String version, List<String> args) {
+    Runner(Configuration configuration,  version, List<String> args) {
+        this.configuration = configuration
         this.version = version
         this.args = args
     }
@@ -59,7 +61,7 @@ class Runner {
      * @return int  The exit code
      */
     int run() {
-        println("Solr Index E-Commerce ${version}")
+        println("Solr Index E-Commerce ${this.version}")
 
         def productsBody = getProductsBody()
 
@@ -81,7 +83,7 @@ class Runner {
     private getProductsBody() {
         def client = HttpClient.newHttpClient()
         def request = HttpRequest.newBuilder()
-                .uri(URI.create(this.productsUrl))
+                .uri(URI.create(this.configuration.productsUrl))
                 .GET().build()
 
         def response = client.send(request, HttpResponse.BodyHandlers.ofString())
