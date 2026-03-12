@@ -30,12 +30,17 @@ package net.jmp.solr.index.ecommerce
  * SOFTWARE.
  */
 
+import java.net.http.*
+
 class Runner {
     /** The version of the application */
     private String version
 
     /** The list of command line arguments */
     private List<String> args
+
+    /** The URL for the products */
+    private String productsUrl = "https://fakestoreapi.com/products"
 
     /**
      * The constructor
@@ -56,6 +61,36 @@ class Runner {
     int run() {
         println("Solr Index E-Commerce ${version}")
 
+        def productsBody = getProductsBody()
+
+        if (productsBody) {
+            println productsBody
+        } else {
+            System.err.println("Failed to get products")
+            return 1
+        }
+
         return 0
+    }
+
+    /**
+     * Gets the products body
+     *
+     * @return  String  The body of the response or null if the request failed
+     */
+    private getProductsBody() {
+        def client = HttpClient.newHttpClient()
+        def request = HttpRequest.newBuilder()
+                .uri(URI.create(this.productsUrl))
+                .GET().build()
+
+        def response = client.send(request, HttpResponse.BodyHandlers.ofString())
+
+        if (response.statusCode() != 200) {
+            System.err.println("Failed to get products: ${response.statusCode()}")
+            return null
+        }
+
+        return response.body()
     }
 }
