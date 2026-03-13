@@ -30,6 +30,8 @@ package net.jmp.solr.index.ecommerce
  * SOFTWARE.
  */
 
+import groovy.json.JsonSlurper
+
 import java.net.http.*
 
 class Runner {
@@ -61,12 +63,16 @@ class Runner {
      * @return int  The exit code
      */
     int run() {
-        println("Solr Index E-Commerce ${this.version}")
+        println("Solr Index E-Commerce Products ${this.version}")
 
-        def productsBody = getProductsBody()
+        def productsBody = this.getProductsBody()
 
         if (productsBody) {
-            println productsBody
+            def products = getProducts(productsBody)
+
+            for (InboundProduct product : products) {
+                println product
+            }
         } else {
             System.err.println("Failed to get products")
             return 1
@@ -94,5 +100,17 @@ class Runner {
         }
 
         return response.body()
+    }
+
+    /**
+     * Gets the list of products from the JSON
+     *
+     * @param   json    String                  The JSON
+     * @return          List<InboundProduct>    The list of products
+     */
+    private static List<InboundProduct> getProducts(String json) {
+        def collection = new JsonSlurper().parseText(json)
+
+        return collection as List<InboundProduct>
     }
 }
