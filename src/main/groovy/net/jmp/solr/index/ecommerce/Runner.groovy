@@ -68,10 +68,11 @@ class Runner {
         def productsBody = this.getProductsBody()
 
         if (productsBody) {
-            def products = getProducts(productsBody)
+            def inboundProducts = getInboundProducts(productsBody)
+            def outboundProducts = getOutboundProducts(inboundProducts)
 
-            for (InboundProduct product : products) {
-                println product
+            for (OutboundProduct outboundProduct : outboundProducts) {
+                println outboundProduct
             }
         } else {
             System.err.println("Failed to get products")
@@ -103,14 +104,42 @@ class Runner {
     }
 
     /**
-     * Gets the list of products from the JSON
+     * Gets the list of inbound products from the JSON
      *
      * @param   json    String                  The JSON
      * @return          List<InboundProduct>    The list of products
      */
-    private static List<InboundProduct> getProducts(String json) {
+    private static List<InboundProduct> getInboundProducts(String json) {
         def collection = new JsonSlurper().parseText(json)
 
         return collection as List<InboundProduct>
+    }
+
+    /**
+     * Gets the list of outbound products from the inbound products
+     *
+     * @param   json    List<InboundProduct>    The list of inbound products
+     * @return          List<OutboundProduct>   The list of outbound products
+     */
+    private static List<OutboundProduct> getOutboundProducts(List<InboundProduct> inboundProducts) {
+        def outboundProducts = []
+
+        for (InboundProduct inboundProduct : inboundProducts) {
+            def outboundProduct = new OutboundProduct()
+
+            outboundProduct.id = "Product-" + inboundProduct.id
+            outboundProduct.productId = inboundProduct.id
+            outboundProduct.title = inboundProduct.title
+            outboundProduct.price = inboundProduct.price
+            outboundProduct.description = inboundProduct.description
+            outboundProduct.category = inboundProduct.category
+            outboundProduct.image = inboundProduct.image
+            outboundProduct.ratingRate = inboundProduct.rating.rate
+            outboundProduct.ratingCount = inboundProduct.rating.count
+
+            outboundProducts.add(outboundProduct)
+        }
+
+        return outboundProducts
     }
 }
