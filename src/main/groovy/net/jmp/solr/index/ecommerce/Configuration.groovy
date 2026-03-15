@@ -36,5 +36,5 @@ import groovy.transform.Canonical
 class Configuration {
     String productsUrl
     String solrUrl
-    String solrCore
+    String solrCollection
 }

@@ -81,9 +81,9 @@ class Main {
 
             configuration.productsUrl = props.getProperty('app.productsUrl')
             configuration.solrUrl = props.getProperty('app.solrUrl')
-            configuration.solrCore = props.getProperty('app.solrCore')
+            configuration.solrCollection = props.getProperty('app.solrCollection')
 
-            if (!configuration.productsUrl || !configuration.solrUrl || !configuration.solrCore) {
+            if (!configuration.productsUrl || !configuration.solrUrl || !configuration.solrCollection) {
                 return null
             }
 

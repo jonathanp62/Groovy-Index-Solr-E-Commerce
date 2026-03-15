@@ -30,6 +30,7 @@ package net.jmp.solr.index.ecommerce
  * SOFTWARE.
  */
 
+import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 
 import java.net.http.*
@@ -71,8 +72,8 @@ class Runner {
             def inboundProducts = getInboundProducts(productsBody)
             def outboundProducts = getOutboundProducts(inboundProducts)
 
-            for (OutboundProduct outboundProduct : outboundProducts) {
-                println outboundProduct
+            if (this.saveProducts(JsonOutput.toJson(outboundProducts)) == 200) {
+                this.commitProducts()
             }
         } else {
             System.err.println("Failed to get products")
@@ -89,9 +90,11 @@ class Runner {
      */
     private getProductsBody() {
         def client = HttpClient.newHttpClient()
+
         def request = HttpRequest.newBuilder()
                 .uri(URI.create(this.configuration.productsUrl))
-                .GET().build()
+                .GET()
+                .build()
 
         def response = client.send(request, HttpResponse.BodyHandlers.ofString())
 
@@ -141,5 +144,49 @@ class Runner {
         }
 
         return outboundProducts
+    }
+
+    /**
+     * Saves the products to Solr
+     *
+     * @param   json    String  The JSON
+     */
+    private int saveProducts(String json) {
+        def client = HttpClient.newHttpClient()
+
+        def request = HttpRequest.newBuilder()
+                .uri(URI.create(this.configuration.solrUrl + "/" + this.configuration.solrCollection + "/update"))
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build()
+
+        def response = client.send(request, HttpResponse.BodyHandlers.ofString())
+
+        if (response.statusCode() != 200) {
+            System.err.println("Failed to save product: ${response.statusCode()}")
+        }
+
+        return response.statusCode()
+    }
+
+    /**
+     * Commits the products
+     *
+     * @return  String  The body of the response or null if the request failed
+     */
+    private void commitProducts() {
+        def client = HttpClient.newHttpClient()
+
+        def request = HttpRequest.newBuilder()
+                .uri(URI.create(this.configuration.productsUrl + "/" + this.configuration.solrCollection + "/update?commit=true"))
+                .GET()
+                .build()
+
+        def response = client.send(request, HttpResponse.BodyHandlers.ofString())
+
+        if (response.statusCode() != 200) {
+            System.err.println("Failed to commit products: ${response.statusCode()}")
+        }
     }
 }
