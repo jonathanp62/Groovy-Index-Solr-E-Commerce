@@ -179,7 +179,7 @@ class Runner {
         def client = HttpClient.newHttpClient()
 
         def request = HttpRequest.newBuilder()
-                .uri(URI.create(this.configuration.productsUrl + "/" + this.configuration.solrCollection + "/update?commit=true"))
+                .uri(URI.create(this.configuration.solrUrl + "/" + this.configuration.solrCollection + "/update?commit=true"))
                 .GET()
                 .build()
 
