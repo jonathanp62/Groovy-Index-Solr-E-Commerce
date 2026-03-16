@@ -1,8 +1,9 @@
 /*
+ * (#)build.gradle  1.0.1   03/16/2026
  * (#)build.gradle  1.0.0   03/12/2026
  *
  * @author   Jonathan Parker
- * @version  1.0.0
+ * @version  1.0.1
  * @since    1.0.0
  *
  * MIT License
@@ -38,12 +39,12 @@ apply plugin: 'net.jmp.gradle.plugin.projectinfo-info'
 
 ext {
     project.group = 'net.jmp.solr.index.ecommerce'
-    project.version = '1.0.0'
+    project.version = '1.0.1'
     project.description = 'to index the ecommerce products'
 }
 
 group = 'net.jmp.solr.index.ecommerce'
-version = '1.0.0'
+version = '1.0.1'
 
 repositories {
     mavenLocal()

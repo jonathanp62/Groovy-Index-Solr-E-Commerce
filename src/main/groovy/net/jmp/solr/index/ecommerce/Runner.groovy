@@ -1,10 +1,11 @@
 package net.jmp.solr.index.ecommerce
 
 /*
+ * (#)Runner.groovy 1.0.1   03/16/2026
  * (#)Runner.groovy 1.0.0   03/12/2026
  *
  * @author    Jonathan Parker
- * @version   1.0.0
+ * @version   1.0.1
  * @since     1.0.0
  *
  * MIT License
@@ -45,6 +46,9 @@ class Runner {
     /** The list of command line arguments */
     private List<String> args
 
+    /** The HTTP client */
+    private HttpClient client = HttpClient.newHttpClient()
+
     /**
      * The constructor
      *
@@ -52,7 +56,7 @@ class Runner {
      * @param version       String          The version of the application
      * @param args          List<String>    The list of command line arguments
      */
-    Runner(Configuration configuration,  version, List<String> args) {
+    Runner(Configuration configuration,  String version, List<String> args) {
         this.configuration = configuration
         this.version = version
         this.args = args
@@ -68,15 +72,19 @@ class Runner {
 
         def productsBody = this.getProductsBody()
 
-        if (productsBody) {
-            def inboundProducts = getInboundProducts(productsBody)
-            def outboundProducts = getOutboundProducts(inboundProducts)
-
-            if (this.saveProducts(JsonOutput.toJson(outboundProducts)) == 200) {
-                this.commitProducts()
-            }
-        } else {
+        if (!productsBody) {
             System.err.println("Failed to get products")
+            return 1
+        }
+
+        def inboundProducts = getInboundProducts(productsBody)
+        def outboundProducts = getOutboundProducts(inboundProducts)
+
+        if (this.saveProducts(JsonOutput.toJson(outboundProducts)) != 200) {
+            return 1
+        }
+
+        if (this.commitProducts() != 200) {
             return 1
         }
 
@@ -88,22 +96,25 @@ class Runner {
      *
      * @return  String  The body of the response or null if the request failed
      */
-    private getProductsBody() {
-        def client = HttpClient.newHttpClient()
-
+    private String getProductsBody() {
         def request = HttpRequest.newBuilder()
                 .uri(URI.create(this.configuration.productsUrl))
                 .GET()
                 .build()
 
-        def response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        try {
+            def response = this.client.send(request, HttpResponse.BodyHandlers.ofString())
 
-        if (response.statusCode() != 200) {
-            System.err.println("Failed to get products: ${response.statusCode()}")
+            if (response.statusCode() != 200) {
+                System.err.println("Failed to get products: ${response.statusCode()}")
+                return null
+            }
+
+            return response.body()
+        } catch (Exception e) {
+            System.err.println("Exception getting products: ${e.message}")
             return null
         }
-
-        return response.body()
     }
 
     /**
@@ -113,9 +124,51 @@ class Runner {
      * @return          List<InboundProduct>    The list of products
      */
     private static List<InboundProduct> getInboundProducts(String json) {
-        def collection = new JsonSlurper().parseText(json)
+        def collection
 
-        return collection as List<InboundProduct>
+        try {
+            collection = new JsonSlurper().parseText(json)
+        } catch (Exception e) {
+            System.err.println("Exception parsing products JSON: ${e.message}")
+            return []
+        }
+
+        if (!(collection instanceof List)) {
+            System.err.println("Unexpected products JSON format: ${collection?.getClass()?.name}")
+            return []
+        }
+
+        return ((List) collection).collect { Object item ->
+            if (!(item instanceof Map)) {
+                return null
+            }
+
+            Map productMap = (Map) item
+
+            def inboundProduct = new InboundProduct()
+
+            inboundProduct.id = (productMap.id ?: 0) as int
+            inboundProduct.title = productMap.title as String
+            inboundProduct.price = (productMap.price ?: 0.0d) as double
+            inboundProduct.description = productMap.description as String
+            inboundProduct.category = productMap.category as String
+            inboundProduct.image = productMap.image as String
+
+            def ratingObj = productMap.rating
+
+            if (ratingObj instanceof Map) {
+                Map ratingMap = (Map) ratingObj
+
+                def inboundRating = new InboundRating()
+
+                inboundRating.rate = (ratingMap.rate ?: 0.0d) as double
+                inboundRating.count = (ratingMap.count ?: 0) as int
+
+                inboundProduct.rating = inboundRating
+            }
+
+            return inboundProduct
+        }.findAll { it != null }    // 'it' is each collection item, equivalent to { InboundProduct p -> p != null }
     }
 
     /**
@@ -137,8 +190,11 @@ class Runner {
             outboundProduct.description = inboundProduct.description
             outboundProduct.category = inboundProduct.category
             outboundProduct.image = inboundProduct.image
-            outboundProduct.ratingRate = inboundProduct.rating.rate
-            outboundProduct.ratingCount = inboundProduct.rating.count
+
+            if (inboundProduct.rating) {
+                outboundProduct.ratingRate = inboundProduct.rating.rate
+                outboundProduct.ratingCount = inboundProduct.rating.count
+            }
 
             outboundProducts.add(outboundProduct)
         }
@@ -152,8 +208,6 @@ class Runner {
      * @param   json    String  The JSON
      */
     private int saveProducts(String json) {
-        def client = HttpClient.newHttpClient()
-
         def request = HttpRequest.newBuilder()
                 .uri(URI.create(this.configuration.solrUrl + "/" + this.configuration.solrCollection + "/update"))
                 .header("Content-Type", "application/json")
@@ -161,32 +215,44 @@ class Runner {
                 .POST(HttpRequest.BodyPublishers.ofString(json))
                 .build()
 
-        def response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        try {
+            def response = this.client.send(request, HttpResponse.BodyHandlers.ofString())
 
-        if (response.statusCode() != 200) {
-            System.err.println("Failed to save product: ${response.statusCode()}")
+            if (response.statusCode() != 200) {
+                System.err.println("Failed to save products: ${response.statusCode()}")
+                System.err.println("Response body: ${response.body()}")
+            }
+
+            return response.statusCode()
+        } catch (Exception e) {
+            System.err.println("Exception saving products: ${e.message}")
+            return 500
         }
-
-        return response.statusCode()
     }
 
     /**
      * Commits the products
      *
-     * @return  String  The body of the response or null if the request failed
+     * @return  int The response status code
      */
-    private void commitProducts() {
-        def client = HttpClient.newHttpClient()
-
+    private int commitProducts() {
         def request = HttpRequest.newBuilder()
                 .uri(URI.create(this.configuration.solrUrl + "/" + this.configuration.solrCollection + "/update?commit=true"))
                 .GET()
                 .build()
 
-        def response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        try {
+            def response = this.client.send(request, HttpResponse.BodyHandlers.ofString())
 
-        if (response.statusCode() != 200) {
-            System.err.println("Failed to commit products: ${response.statusCode()}")
+            if (response.statusCode() != 200) {
+                System.err.println("Failed to commit products: ${response.statusCode()}")
+                System.err.println("Response body: ${response.body()}")
+            }
+
+            return response.statusCode()
+        } catch (Exception e) {
+            System.err.println("Exception committing products: ${e.message}")
+            return 500
         }
     }
 }
