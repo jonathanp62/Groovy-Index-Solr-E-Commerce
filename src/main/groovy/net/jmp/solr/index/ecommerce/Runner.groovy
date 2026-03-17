@@ -1,11 +1,12 @@
 package net.jmp.solr.index.ecommerce
 
 /*
+ * (#)Runner.groovy 1.1.1   03/17/2026
  * (#)Runner.groovy 1.0.1   03/16/2026
  * (#)Runner.groovy 1.0.0   03/12/2026
  *
  * @author    Jonathan Parker
- * @version   1.0.1
+ * @version   1.1.1
  * @since     1.0.0
  *
  * MIT License
@@ -80,7 +81,23 @@ class Runner {
         def inboundProducts = getInboundProducts(productsBody)
         def outboundProducts = getOutboundProducts(inboundProducts)
 
-        if (this.saveProducts(JsonOutput.toJson(outboundProducts)) != 200) {
+        def payloads = outboundProducts.collect { op ->
+            [
+                    "id": op.id,
+                    "product_id": op.productId,
+                    "title": op.title,
+                    "price": op.price,
+                    "description": op.description,
+                    "category": op.category,
+                    "image": op.image,
+                    "rating_rate": op.ratingRate,
+                    "rating_count": op.ratingCount
+            ]
+        }
+
+        def jsonPayload = JsonOutput.toJson(payloads)
+
+        if (this.saveProducts(jsonPayload) != 200) {
             return 1
         }
 
