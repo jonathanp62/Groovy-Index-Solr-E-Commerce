@@ -35,7 +35,7 @@
 plugins {
     id 'groovy'
     id 'com.gradleup.shadow'                    version '9.4.1'
-    id 'net.jmp.gradle.plugin.projectinfo-info' version '0.2.0'
+    id 'net.jmp.gradle.plugin.projectinfo-info' version '0.3.0'
 }
 
 apply plugin: 'net.jmp.gradle.plugin.projectinfo-info'
